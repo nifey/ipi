@@ -1,0 +1,5 @@
+- Try parallel wasm to make things faster
+- Optmize procedural generation algorithm
+- Use rust Random number generation
+- Render canvas directly from Rust
+- Visual effects: Colors and glow
