@@ -20,7 +20,29 @@
           ctx.arc(
             universe.star_x(i),
             universe.star_y(i),
+            universe.star_radius(i),
+            0,
+            Math.PI * 2,
+            true
+          );
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(
+            universe.star_x(i),
+            universe.star_y(i),
             universe.star_system_radius(i),
+            0,
+            Math.PI * 2,
+            true
+          );
+          ctx.stroke();
+        }
+        for (var i = 0; i < universe.num_planets(); i++) {
+          ctx.beginPath();
+          ctx.arc(
+            universe.planet_x(i),
+            universe.planet_y(i),
+            universe.planet_radius(i),
             0,
             Math.PI * 2,
             true
