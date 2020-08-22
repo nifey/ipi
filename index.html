@@ -8,9 +8,15 @@
       import init, { Universe } from "./pkg/ipi_game.js";
       import * as util from "./util.js";
 
-      async function run() {
-        await init();
-        const universe = Universe.new(window.innerWidth, window.innerHeight, 3);
+      let universe;
+      let system_running = true;
+
+      function draw() {
+        window.requestAnimationFrame(draw);
+        if (!system_running) {
+          return;
+        }
+        universe.tick();
         const canvas = document.getElementById("game-canvas");
         canvas.width = universe.width();
         canvas.height = universe.height();
@@ -26,16 +32,6 @@
             true
           );
           ctx.fill();
-          ctx.beginPath();
-          ctx.arc(
-            universe.star_x(i),
-            universe.star_y(i),
-            universe.star_system_radius(i),
-            0,
-            Math.PI * 2,
-            true
-          );
-          ctx.stroke();
         }
         for (var i = 0; i < universe.num_planets(); i++) {
           ctx.beginPath();
@@ -49,6 +45,16 @@
           );
           ctx.fill();
         }
+      }
+
+      async function run() {
+        await init();
+        const canvas = document.getElementById("game-canvas");
+        canvas.addEventListener("click", function () {
+          system_running = !system_running;
+        });
+        universe = Universe.new(window.innerWidth, window.innerHeight, 3);
+        window.requestAnimationFrame(draw);
       }
 
       run();

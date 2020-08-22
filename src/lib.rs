@@ -10,6 +10,8 @@ const MIN_NUM_PLANETS: u32 = 1;
 const MAX_NUM_PLANETS: u32 = 4;
 const MIN_NUM_STARS: u32 = 3;
 const MAX_NUM_STARS: u32 = 5;
+const MIN_PLANET_DQ: u32 = 1;
+const MAX_PLANET_DQ: u32 = 3;
 const PLANET_ACTIVATE_RANGE: u32 = 2;
 const MAX_TRIES: u32 = 10;
 
@@ -22,8 +24,6 @@ extern "C" {
 pub struct Universe {
     width: u32,
     height: u32,
-    num_stars: u32,
-    num_planets: u32,
     star_x: Vec<u32>,
     star_y: Vec<u32>,
     star_radius: Vec<u32>,
@@ -31,9 +31,9 @@ pub struct Universe {
     planet_radius: Vec<u32>,
     planet_star: Vec<u8>,
     planet_distance: Vec<u32>,
-    //planet_q: Vec<u32>,
-    //planet_dq: Vec<u32>,
-    //planet_direction: Vec<bool>,
+    planet_q: Vec<f64>,
+    planet_dq: Vec<f64>,
+    planet_direction: Vec<bool>,
 }
 
 #[wasm_bindgen]
@@ -42,8 +42,6 @@ impl Universe {
         let mut universe = Universe {
             width,
             height,
-            num_stars: 0,
-            num_planets: 0,
             star_x: Vec::new(),
             star_y: Vec::new(),
             star_radius: Vec::new(),
@@ -51,9 +49,9 @@ impl Universe {
             planet_radius: Vec::new(),
             planet_star: Vec::new(),
             planet_distance: Vec::new(),
-            //planet_q: Vec::new(),
-            //planet_dq: Vec::new(),
-            //planet_direction: Vec::new(),
+            planet_q: Vec::new(),
+            planet_dq: Vec::new(),
+            planet_direction: Vec::new(),
         };
         universe.generate();
         universe
@@ -61,17 +59,16 @@ impl Universe {
 
     fn generate(&mut self) {
         loop {
-            if !self.generate_stars() || !self.generate_planets() {
+            if !self.generate_stars() || !self.generate_planet_positions() {
                 self.reset();
             } else {
                 break;
             }
         }
+        self.generate_planet_angles();
     }
 
     fn reset(&mut self) {
-        self.num_stars = 0;
-        self.num_planets = 0;
         self.star_x.clear();
         self.star_y.clear();
         self.star_radius.clear();
@@ -79,9 +76,9 @@ impl Universe {
         self.planet_radius.clear();
         self.planet_star.clear();
         self.planet_distance.clear();
-        //self.planet_q.clear();
-        //self.planet_dq.clear();
-        //self.planet_direction.clear();
+        self.planet_q.clear();
+        self.planet_dq.clear();
+        self.planet_direction.clear();
     }
 
     pub fn width(&self) -> u32 {
@@ -92,12 +89,12 @@ impl Universe {
         self.height
     }
 
-    pub fn num_stars(&self) -> u32 {
-        self.num_stars
+    pub fn num_stars(&self) -> usize {
+        self.star_x.len()
     }
 
-    pub fn num_planets(&self) -> u32 {
-        self.num_planets
+    pub fn num_planets(&self) -> usize {
+        self.planet_star.len()
     }
 
     pub fn generate_stars(&mut self) -> bool {
@@ -154,12 +151,11 @@ impl Universe {
             self.star_radius.clear();
             self.star_system_radius.clear();
         }
-        self.num_stars = num_stars;
         true
     }
 
-    pub fn generate_planets(&mut self) -> bool {
-        for star in 0..self.num_stars as usize {
+    pub fn generate_planet_positions(&mut self) -> bool {
+        for star in 0..self.num_stars() {
             let mut generation_done;
             let system_index = self.planet_star.len();
             let mut outer_tries = 0;
@@ -211,8 +207,16 @@ impl Universe {
                 self.planet_distance.truncate(system_index);
             }
         }
-        self.num_planets = self.planet_star.len() as u32;
         true
+    }
+
+    pub fn generate_planet_angles(&mut self) {
+        for _ in 0..self.num_planets() {
+            self.planet_q.push(gen_rand(0, 359) as f64);
+            self.planet_dq
+                .push(gen_rand(MIN_PLANET_DQ, MAX_PLANET_DQ) as f64);
+            self.planet_direction.push(gen_rand(0, 1) == 1);
+        }
     }
 
     pub fn star_x(&self, star: usize) -> u32 {
@@ -247,12 +251,14 @@ impl Universe {
         }
     }
 
-    pub fn planet_x(&self, planet: usize) -> u32 {
-        self.star_x[self.planet_star[planet] as usize] + self.planet_distance[planet]
+    pub fn planet_x(&self, planet: usize) -> f64 {
+        self.star_x[self.planet_star[planet] as usize] as f64
+            + (self.planet_distance[planet] as f64 * self.planet_q[planet].to_radians().cos())
     }
 
-    pub fn planet_y(&self, planet: usize) -> u32 {
-        self.star_y[self.planet_star[planet] as usize]
+    pub fn planet_y(&self, planet: usize) -> f64 {
+        self.star_y[self.planet_star[planet] as usize] as f64
+            + (self.planet_distance[planet] as f64 * self.planet_q[planet].to_radians().sin())
     }
 
     pub fn planet_radius(&self, planet: usize) -> u32 {
@@ -264,6 +270,14 @@ impl Universe {
             || (x as i32 + radius as i32) > self.width as i32
             || (y as i32 - radius as i32) < 0
             || (y as i32 + radius as i32) > self.height as i32)
+    }
+
+    pub fn tick(&mut self) -> bool {
+        for planet in 0..self.num_planets() {
+            self.planet_q[planet] =
+                ((self.planet_q[planet] + self.planet_dq[planet]) as u32 % 360) as f64;
+        }
+        true
     }
 }
 
