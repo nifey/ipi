@@ -1,0 +1,35 @@
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+  </head>
+  <body>
+    <canvas id="game-canvas"></canvas>
+    <script type="module">
+      import init, { Universe } from "./pkg/ipi_game.js";
+      import * as util from "./util.js";
+
+      async function run() {
+        await init();
+        const universe = Universe.new(window.innerWidth, window.innerHeight, 3);
+        const canvas = document.getElementById("game-canvas");
+        canvas.width = universe.width();
+        canvas.height = universe.height();
+        const ctx = canvas.getContext("2d");
+        for (var i = 0; i < universe.num_stars(); i++) {
+          ctx.beginPath();
+          ctx.arc(
+            universe.star_x(i),
+            universe.star_y(i),
+            universe.star_system_radius(i),
+            0,
+            Math.PI * 2,
+            true
+          );
+          ctx.fill();
+        }
+      }
+
+      run();
+    </script>
+  </body>
+</html>
