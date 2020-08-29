@@ -13,10 +13,11 @@ const MIN_NUM_STARS: u32 = 3;
 const MAX_NUM_STARS: u32 = 5;
 const MIN_PLANET_DQ: u32 = 1;
 pub const MAX_PLANET_DQ: u32 = 3;
-const PLANET_ACTIVATE_RANGE: u32 = 2;
+const PLANET_ACTIVATE_RANGE: u32 = 3;
 const MAX_TRIES: u32 = 10;
 pub const SLOWDOWN_FACTOR: f64 = 0.5;
-const PACKET_SPEED: f64 = 4.0;
+const PACKET_SPEED: f64 = 14.0;
+const PACKET_RADIUS: u32 = 7;
 pub const MIN_PACKET_DQ: f64 = 1.0;
 
 #[wasm_bindgen(module = "/util.js")]
@@ -325,6 +326,10 @@ impl Universe {
         self.packet.is_bound()
     }
 
+    pub fn packet_radius(&self) -> u32 {
+        PACKET_RADIUS
+    }
+
     pub fn packet_planet(&self) -> usize {
         match self.packet {
             Packet::Bound {
@@ -338,6 +343,7 @@ impl Universe {
                 y: _,
                 dx: _,
                 dy: _,
+                last_planet: _,
             } => 0,
         }
     }
@@ -399,6 +405,7 @@ impl Universe {
                 y: _,
                 dx: _,
                 dy: _,
+                last_planet: _,
             } => 0.0,
         }
     }
@@ -460,6 +467,7 @@ impl Universe {
                 y: _,
                 dx: _,
                 dy: _,
+                last_planet: _,
             } => 0.0,
         }
     }
@@ -477,6 +485,7 @@ impl Universe {
                 y: _,
                 dx: _,
                 dy: _,
+                last_planet: _,
             } => x,
         }
     }
@@ -494,6 +503,7 @@ impl Universe {
                 y,
                 dx: _,
                 dy: _,
+                last_planet: _,
             } => y,
         }
     }
@@ -526,6 +536,7 @@ impl Universe {
                     self.planet_y(planet),
                     PACKET_SPEED * q.to_radians().cos(),
                     -PACKET_SPEED * q.to_radians().sin(),
+                    planet,
                 );
             }
             Packet::Free {
@@ -533,6 +544,7 @@ impl Universe {
                 y: _,
                 dx: _,
                 dy: _,
+                last_planet: _,
             } => {}
         }
     }
@@ -550,11 +562,38 @@ impl Universe {
         }
         let (within_window, packet) = Packet::tick(self.packet, self.width, self.height);
         if !within_window {
-            false
+            // Update retry count
+            self.packet = Packet::set_bound(
+                self.packet_source,
+                self.planet_q[self.packet_source],
+                self.planet_dq[self.packet_source],
+                self.planet_direction[self.packet_source],
+            );
         } else {
             self.packet = packet;
-            true
         }
+        if !self.packet_bound() {
+            let px = self.packet_x();
+            let py = self.packet_y();
+            for planet in 0..self.num_planets() {
+                if planet != self.packet.get_last_planet()
+                    && (px - self.planet_x(planet)).powf(2.0)
+                        + (py - self.planet_y(planet)).powf(2.0)
+                        < (self.planet_radius[planet] as f64 * PLANET_ACTIVATE_RANGE as f64
+                            + PACKET_RADIUS as f64)
+                            .powf(2.0)
+                {
+                    self.packet = Packet::set_bound(
+                        planet,
+                        self.planet_q[planet],
+                        self.planet_dq[planet],
+                        self.planet_direction[planet],
+                    );
+                    break;
+                }
+            }
+        }
+        within_window
     }
 }
 

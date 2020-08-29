@@ -13,6 +13,7 @@ pub enum Packet {
         y: f64,
         dx: f64,
         dy: f64,
+        last_planet: usize,
     },
 }
 
@@ -23,6 +24,7 @@ impl Packet {
             y: 0.0,
             dx: 0.0,
             dy: 0.0,
+            last_planet: 0,
         }
     }
 
@@ -35,8 +37,32 @@ impl Packet {
         }
     }
 
-    pub fn set_free(x: f64, y: f64, dx: f64, dy: f64) -> Packet {
-        Packet::Free { x, y, dx, dy }
+    pub fn set_free(x: f64, y: f64, dx: f64, dy: f64, last_planet: usize) -> Packet {
+        Packet::Free {
+            x,
+            y,
+            dx,
+            dy,
+            last_planet,
+        }
+    }
+
+    pub fn get_last_planet(&self) -> usize {
+        match self {
+            Self::Bound {
+                planet: _,
+                q: _,
+                dq: _,
+                direction: _,
+            } => 0,
+            Self::Free {
+                x: _,
+                y: _,
+                dx: _,
+                dy: _,
+                last_planet,
+            } => *last_planet,
+        }
     }
 
     pub fn tick(packet: Packet, width: u32, height: u32) -> (bool, Packet) {
@@ -66,7 +92,13 @@ impl Packet {
                     },
                 )
             }
-            Packet::Free { x, y, dx, dy } => {
+            Packet::Free {
+                x,
+                y,
+                dx,
+                dy,
+                last_planet,
+            } => {
                 let new_x = x as f64 + dx;
                 let new_y = y as f64 + dy;
                 if new_x < 0.0 || new_x > width as f64 || new_y < 0.0 || new_y > height as f64 {
@@ -79,6 +111,7 @@ impl Packet {
                         y: new_y,
                         dx,
                         dy,
+                        last_planet,
                     },
                 )
             }
@@ -98,6 +131,7 @@ impl Packet {
                 y: _,
                 dx: _,
                 dy: _,
+                last_planet: _,
             } => false,
         }
     }
