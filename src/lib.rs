@@ -14,6 +14,7 @@ const MIN_PLANET_DQ: u32 = 1;
 const MAX_PLANET_DQ: u32 = 3;
 const PLANET_ACTIVATE_RANGE: u32 = 2;
 const MAX_TRIES: u32 = 10;
+const SLOWDOWN_FACTOR: f64 = 0.5;
 
 #[wasm_bindgen(module = "/util.js")]
 extern "C" {
@@ -214,8 +215,8 @@ impl Universe {
         for _ in 0..self.num_planets() {
             self.planet_q.push(gen_rand(0, 359) as f64);
             self.planet_dq
-                .push(gen_rand(MIN_PLANET_DQ, MAX_PLANET_DQ) as f64);
-            self.planet_direction.push(gen_rand(0, 1) == 1);
+                .push(gen_rand(MIN_PLANET_DQ, MAX_PLANET_DQ) as f64 * SLOWDOWN_FACTOR);
+            self.planet_direction.push(gen_rand(0, 100) % 2 == 1);
         }
     }
 
@@ -274,8 +275,14 @@ impl Universe {
 
     pub fn tick(&mut self) -> bool {
         for planet in 0..self.num_planets() {
-            self.planet_q[planet] =
-                ((self.planet_q[planet] + self.planet_dq[planet]) as u32 % 360) as f64;
+            if self.planet_direction[planet] {
+                self.planet_q[planet] = self.planet_q[planet] + self.planet_dq[planet];
+            } else {
+                self.planet_q[planet] = self.planet_q[planet] + (360.0 - self.planet_dq[planet]);
+            }
+            if self.planet_q[planet] > 360.0 {
+                self.planet_q[planet] -= 360.0;
+            }
         }
         true
     }
