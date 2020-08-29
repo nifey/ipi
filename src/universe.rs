@@ -98,14 +98,6 @@ impl Universe {
         self.planet_direction.clear();
     }
 
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-
     pub fn num_stars(&self) -> usize {
         self.star_x.len()
     }
@@ -114,7 +106,7 @@ impl Universe {
         self.planet_star.len()
     }
 
-    pub fn generate_stars(&mut self) -> bool {
+    fn generate_stars(&mut self) -> bool {
         let num_stars = gen_rand(MIN_NUM_STARS, MAX_NUM_STARS);
         let mut outer_tries = 0;
         loop {
@@ -171,7 +163,7 @@ impl Universe {
         true
     }
 
-    pub fn generate_planet_positions(&mut self) -> bool {
+    fn generate_planet_positions(&mut self) -> bool {
         for star in 0..self.num_stars() {
             let mut generation_done;
             let system_index = self.planet_star.len();
@@ -227,7 +219,7 @@ impl Universe {
         true
     }
 
-    pub fn generate_planet_angles(&mut self) {
+    fn generate_planet_angles(&mut self) {
         for _ in 0..self.num_planets() {
             self.planet_q.push(gen_rand(0, 359) as f64);
             self.planet_dq
@@ -236,7 +228,7 @@ impl Universe {
         }
     }
 
-    pub fn generate_packet(&mut self) {
+    fn generate_packet(&mut self) {
         let mut source = 0;
         let mut destination = 0;
         if self.width > self.height {
@@ -289,14 +281,6 @@ impl Universe {
             0
         } else {
             self.star_y[star]
-        }
-    }
-
-    pub fn star_system_radius(&self, star: usize) -> u32 {
-        if self.star_system_radius.len() < star {
-            0
-        } else {
-            self.star_system_radius[star]
         }
     }
 
@@ -516,7 +500,7 @@ impl Universe {
         self.packet_destination
     }
 
-    pub fn within_window(&self, x: u32, y: u32, radius: u32) -> bool {
+    fn within_window(&self, x: u32, y: u32, radius: u32) -> bool {
         !((x as i32 - radius as i32) < 0
             || (x as i32 + radius as i32) > self.width as i32
             || (y as i32 - radius as i32) < 0
@@ -597,7 +581,7 @@ impl Universe {
     }
 }
 
-pub fn circles_overlap(x1: u32, y1: u32, radius1: u32, x2: u32, y2: u32, radius2: u32) -> bool {
+fn circles_overlap(x1: u32, y1: u32, radius1: u32, x2: u32, y2: u32, radius2: u32) -> bool {
     (x1 as i32 - x2 as i32).pow(2) + (y1 as i32 - y2 as i32).pow(2)
         < (radius1 + radius2).pow(2) as i32
 }

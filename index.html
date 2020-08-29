@@ -6,7 +6,6 @@
     <canvas id="game-canvas"></canvas>
     <script type="module">
       import init, { Universe } from "./pkg/ipi_game.js";
-      import * as util from "./util.js";
 
       let universe;
       let system_running = true;
@@ -18,8 +17,8 @@
         }
         universe.tick();
         const canvas = document.getElementById("game-canvas");
-        canvas.width = universe.width();
-        canvas.height = universe.height();
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
         const ctx = canvas.getContext("2d");
         // Highlight source and destination planet
         ctx.fillStyle = "rgb(0,0,255)";
