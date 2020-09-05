@@ -8,93 +8,60 @@
       import init, { Universe } from "./pkg/ipi_game.js";
 
       let universe;
+      let wasm;
       const canvas = document.getElementById("game-canvas");
       const ctx = canvas.getContext("2d");
-      let colors = ["#ff0000", "#00ff00", "#0000ff", "#000000"];
-
-      function fill_color(i) {
-        ctx.fillStyle = colors[i];
-      }
-
-      function stroke_color(i) {
-        ctx.strokeStyle = colors[i];
-      }
-
-      function draw_circle(x, y, r) {
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2, true);
-        ctx.fill();
-      }
+      let colors = ["#ff0000", "#00ff00", "#eaea8a", "#cbf1f2"];
 
       function draw() {
         window.requestAnimationFrame(draw);
-        universe.tick();
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        ctx.fillStyle = "#070219";
+        ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+        let ptr = universe.tick();
+        let data = new Uint32Array(wasm.memory.buffer, ptr);
         ctx.font = "30px Arial";
-        ctx.strokeText("Score: " + universe.score(), 10, 40);
-        // Highlight source and destination planet
-        fill_color(2);
-        const src_planet = universe.source_planet();
-        draw_circle(
-          universe.planet_x(src_planet),
-          universe.planet_y(src_planet),
-          universe.planet_radius(src_planet) * 1.8
-        );
-        fill_color(1);
-        const dest_planet = universe.destination_planet();
-        draw_circle(
-          universe.planet_x(dest_planet),
-          universe.planet_y(dest_planet),
-          universe.planet_radius(dest_planet) * 1.8
-        );
-        // Draw packet
-        if (universe.packet_bound()) {
-          const planet = universe.packet_planet();
-          fill_color(0);
-          draw_circle(
-            universe.planet_x(planet),
-            universe.planet_y(planet),
-            universe.planet_radius(planet) * 1.5
-          );
-          stroke_color(0);
+        ctx.strokeText("Score: " + data[1], 10, 40);
+        let index = 2;
+        if (data[index] > 0) {
+          ctx.strokeStyle = colors[0];
           ctx.beginPath();
-          ctx.moveTo(universe.planet_x(planet), universe.planet_y(planet));
-          ctx.lineTo(universe.packet_end_x(), universe.packet_end_y());
+          ctx.moveTo(data[index], data[index + 1]);
+          ctx.lineTo(data[index + 2], data[index + 3]);
           ctx.stroke();
+          index += 4;
         } else {
-          fill_color(0);
-          draw_circle(
-            universe.packet_x(),
-            universe.packet_y(),
-            universe.packet_radius()
-          );
+          index += 1;
         }
-        fill_color(3);
-        // Draw Stars
-        for (var i = 0; i < universe.num_stars(); i++) {
-          draw_circle(
-            universe.star_x(i),
-            universe.star_y(i),
-            universe.star_radius(i)
-          );
-        }
-        // Draw Planets
-        for (var i = 0; i < universe.num_planets(); i++) {
-          draw_circle(
-            universe.planet_x(i),
-            universe.planet_y(i),
-            universe.planet_radius(i)
-          );
+        for (let c = 0; c < 4; c++) {
+          ctx.fillStyle = colors[c];
+          let n = data[index++];
+          for (let i = 0; i < n; i++) {
+            ctx.beginPath();
+            ctx.arc(
+              data[index],
+              data[index + 1],
+              data[index + 2],
+              0,
+              Math.PI * 2,
+              true
+            );
+            ctx.fill();
+            index += 3;
+          }
         }
       }
 
       async function run() {
-        await init();
+        wasm = await init();
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
         canvas.addEventListener("click", function () {
           universe.free_packet();
         });
         universe = Universe.new(window.innerWidth, window.innerHeight, 3);
+        alert(
+          "Game objective: Transmit the packet from source planet to destination planet and then back again to the source planet.\nBoth source and destination are marked green.\nControls: Click to transmit packet"
+        );
         window.requestAnimationFrame(draw);
       }
 

@@ -9,4 +9,4 @@ rm compress/pkg/{*.ts,README.md,package.json}
 
 zip -r compress compress -9
 echo -n "Size of compressed zip: "
-ls -lh | grep "compress.zip" | cut -d" " -f 6
+ls -l | grep "compress.zip" | cut -d" " -f 5

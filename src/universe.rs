@@ -4,19 +4,19 @@ use wasm_bindgen::prelude::*;
 const MIN_STAR_RADIUS: u32 = 8;
 const MAX_STAR_RADIUS: u32 = 12;
 const MIN_PLANET_RADIUS: u32 = 3;
-const MAX_PLANET_RADIUS: u32 = 7;
+const MAX_PLANET_RADIUS: u32 = 8;
 const MIN_STAR_SYSTEM_RADIUS: u32 = 150;
 const MAX_STAR_SYSTEM_RADIUS: u32 = 300;
 const MIN_NUM_PLANETS: u32 = 1;
-const MAX_NUM_PLANETS: u32 = 4;
+const MAX_NUM_PLANETS: u32 = 6;
 const MIN_NUM_STARS: u32 = 3;
 const MAX_NUM_STARS: u32 = 5;
 const MIN_PLANET_DQ: u32 = 1;
-pub const MAX_PLANET_DQ: u32 = 3;
+pub const MAX_PLANET_DQ: u32 = 8;
 const PLANET_ACTIVATE_RANGE: u32 = 3;
 const MAX_TRIES: u32 = 10;
-pub const SLOWDOWN_FACTOR: f64 = 0.5;
-const PACKET_SPEED: f64 = 14.0;
+pub const SLOWDOWN_FACTOR: f64 = 0.2;
+const PACKET_SPEED: f64 = 13.0;
 const PACKET_RADIUS: u32 = 7;
 pub const MIN_PACKET_DQ: f64 = 1.0;
 
@@ -88,6 +88,7 @@ impl Universe {
         self.packet = Packet::new();
         self.packet_source = 0;
         self.packet_destination = 0;
+        self.packet_reached_destination = false;
         self.star_x.clear();
         self.star_y.clear();
         self.star_radius.clear();
@@ -100,11 +101,7 @@ impl Universe {
         self.planet_direction.clear();
     }
 
-    pub fn num_stars(&self) -> usize {
-        self.star_x.len()
-    }
-
-    pub fn num_planets(&self) -> usize {
+    fn num_planets(&self) -> usize {
         self.planet_star.len()
     }
 
@@ -166,7 +163,7 @@ impl Universe {
     }
 
     fn generate_planet_positions(&mut self) -> bool {
-        for star in 0..self.num_stars() {
+        for star in 0..self.star_x.len() {
             let mut generation_done;
             let system_index = self.planet_star.len();
             let mut outer_tries = 0;
@@ -270,72 +267,18 @@ impl Universe {
         );
     }
 
-    pub fn star_x(&self, star: usize) -> u32 {
-        if self.star_x.len() < star {
-            0
-        } else {
-            self.star_x[star]
-        }
-    }
-
-    pub fn star_y(&self, star: usize) -> u32 {
-        if self.star_y.len() < star {
-            0
-        } else {
-            self.star_y[star]
-        }
-    }
-
-    pub fn star_radius(&self, star: usize) -> u32 {
-        if self.star_radius.len() < star {
-            0
-        } else {
-            self.star_radius[star]
-        }
-    }
-
-    pub fn score(&self) -> u32 {
-        self.score
-    }
-
-    pub fn planet_x(&self, planet: usize) -> f64 {
+    fn planet_x(&self, planet: usize) -> f64 {
         self.star_x[self.planet_star[planet] as usize] as f64
             + (self.planet_distance[planet] as f64 * self.planet_q[planet].to_radians().cos())
     }
 
-    pub fn planet_y(&self, planet: usize) -> f64 {
+    fn planet_y(&self, planet: usize) -> f64 {
         self.star_y[self.planet_star[planet] as usize] as f64
             + (self.planet_distance[planet] as f64 * self.planet_q[planet].to_radians().sin())
     }
 
-    pub fn planet_radius(&self, planet: usize) -> u32 {
-        self.planet_radius[planet]
-    }
-
-    pub fn packet_bound(&self) -> bool {
+    fn packet_bound(&self) -> bool {
         self.packet.is_bound()
-    }
-
-    pub fn packet_radius(&self) -> u32 {
-        PACKET_RADIUS
-    }
-
-    pub fn packet_planet(&self) -> usize {
-        match self.packet {
-            Packet::Bound {
-                planet,
-                q: _,
-                dq: _,
-                direction: _,
-            } => planet,
-            Packet::Free {
-                x: _,
-                y: _,
-                dx: _,
-                dy: _,
-                last_planet: _,
-            } => 0,
-        }
     }
 
     pub fn packet_end_x(&self) -> f64 {
@@ -498,14 +441,6 @@ impl Universe {
         }
     }
 
-    pub fn source_planet(&self) -> usize {
-        self.packet_source
-    }
-
-    pub fn destination_planet(&self) -> usize {
-        self.packet_destination
-    }
-
     fn within_window(&self, x: u32, y: u32, radius: u32) -> bool {
         !((x as i32 - radius as i32) < 0
             || (x as i32 + radius as i32) > self.width as i32
@@ -539,7 +474,8 @@ impl Universe {
         }
     }
 
-    pub fn tick(&mut self) -> bool {
+    pub fn tick(&mut self) -> *const u32 {
+        let mut planet_data: Vec<u32> = Vec::new();
         for planet in 0..self.num_planets() {
             if self.planet_direction[planet] {
                 self.planet_q[planet] = self.planet_q[planet] + self.planet_dq[planet];
@@ -549,6 +485,9 @@ impl Universe {
             if self.planet_q[planet] > 360.0 {
                 self.planet_q[planet] -= 360.0;
             }
+            planet_data.push(self.planet_x(planet) as u32);
+            planet_data.push(self.planet_y(planet) as u32);
+            planet_data.push(self.planet_radius[planet] as u32);
         }
         let (within_window, packet) = Packet::tick(self.packet, self.width, self.height);
         if !within_window {
@@ -591,7 +530,59 @@ impl Universe {
                 }
             }
         }
-        within_window
+        let mut data: Vec<u32> = Vec::new();
+        data.push(0);
+        data.push(self.score);
+        // Push packet or active planet data
+        match self.packet {
+            Packet::Bound {
+                planet,
+                q: _,
+                dq: _,
+                direction: _,
+            } => {
+                data.push(self.planet_x(planet) as u32);
+                data.push(self.planet_y(planet) as u32);
+                data.push(self.packet_end_x() as u32);
+                data.push(self.packet_end_y() as u32);
+                data.push(1);
+                data.push(self.planet_x(planet) as u32);
+                data.push(self.planet_y(planet) as u32);
+                data.push((self.planet_radius[planet] as f32 * 1.5) as u32);
+            }
+            Packet::Free {
+                x,
+                y,
+                dx: _,
+                dy: _,
+                last_planet: _,
+            } => {
+                data.push(0);
+                data.push(1);
+                data.push(x as u32);
+                data.push(y as u32);
+                data.push(PACKET_RADIUS);
+            }
+        }
+        // Push source and destination planet
+        data.push(2);
+        data.push(self.planet_x(self.packet_destination) as u32);
+        data.push(self.planet_y(self.packet_destination) as u32);
+        data.push((self.planet_radius[self.packet_destination] as f32 * 1.8) as u32);
+        data.push(self.planet_x(self.packet_source) as u32);
+        data.push(self.planet_y(self.packet_source) as u32);
+        data.push((self.planet_radius[self.packet_source] as f32 * 1.8) as u32);
+        // Push star data
+        data.push(self.star_x.len() as u32);
+        for i in 0..self.star_x.len() {
+            data.push(self.star_x[i]);
+            data.push(self.star_y[i]);
+            data.push(self.star_radius[i]);
+        }
+        // Push planet data
+        data.push(self.planet_q.len() as u32);
+        data.append(&mut planet_data);
+        data.as_ptr()
     }
 }
 
