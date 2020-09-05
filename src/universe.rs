@@ -33,6 +33,7 @@ pub struct Universe {
     packet: Packet,
     packet_source: usize,
     packet_destination: usize,
+    packet_reached_destination: bool,
     star_x: Vec<u32>,
     star_y: Vec<u32>,
     star_radius: Vec<u32>,
@@ -55,6 +56,7 @@ impl Universe {
             packet: Packet::new(),
             packet_source: 0,
             packet_destination: 0,
+            packet_reached_destination: false,
             star_x: Vec::new(),
             star_y: Vec::new(),
             star_radius: Vec::new(),
@@ -290,6 +292,10 @@ impl Universe {
         } else {
             self.star_radius[star]
         }
+    }
+
+    pub fn score(&self) -> u32 {
+        self.score
     }
 
     pub fn planet_x(&self, planet: usize) -> f64 {
@@ -546,7 +552,7 @@ impl Universe {
         }
         let (within_window, packet) = Packet::tick(self.packet, self.width, self.height);
         if !within_window {
-            // Update retry count
+            self.packet_reached_destination = false;
             self.packet = Packet::set_bound(
                 self.packet_source,
                 self.planet_q[self.packet_source],
@@ -573,6 +579,14 @@ impl Universe {
                         self.planet_dq[planet],
                         self.planet_direction[planet],
                     );
+                    if !self.packet_reached_destination && planet == self.packet_destination {
+                        self.packet_reached_destination = true;
+                    }
+                    if self.packet_reached_destination && planet == self.packet_source {
+                        self.score += 1;
+                        self.reset();
+                        self.generate();
+                    }
                     break;
                 }
             }

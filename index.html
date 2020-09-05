@@ -8,110 +8,89 @@
       import init, { Universe } from "./pkg/ipi_game.js";
 
       let universe;
-      let system_running = true;
+      const canvas = document.getElementById("game-canvas");
+      const ctx = canvas.getContext("2d");
+      let colors = ["#ff0000", "#00ff00", "#0000ff", "#000000"];
+
+      function fill_color(i) {
+        ctx.fillStyle = colors[i];
+      }
+
+      function stroke_color(i) {
+        ctx.strokeStyle = colors[i];
+      }
+
+      function draw_circle(x, y, r) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2, true);
+        ctx.fill();
+      }
 
       function draw() {
         window.requestAnimationFrame(draw);
-        if (!system_running) {
-          return;
-        }
         universe.tick();
-        const canvas = document.getElementById("game-canvas");
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        const ctx = canvas.getContext("2d");
+        ctx.font = "30px Arial";
+        ctx.strokeText("Score: " + universe.score(), 10, 40);
         // Highlight source and destination planet
-        ctx.fillStyle = "rgb(0,0,255)";
+        fill_color(2);
         const src_planet = universe.source_planet();
-        ctx.beginPath();
-        ctx.arc(
+        draw_circle(
           universe.planet_x(src_planet),
           universe.planet_y(src_planet),
-          universe.planet_radius(src_planet) * 1.8,
-          0,
-          Math.PI * 2,
-          true
+          universe.planet_radius(src_planet) * 1.8
         );
-        ctx.fill();
-        ctx.fillStyle = "rgb(0,255,0)";
+        fill_color(1);
         const dest_planet = universe.destination_planet();
-        ctx.beginPath();
-        ctx.arc(
+        draw_circle(
           universe.planet_x(dest_planet),
           universe.planet_y(dest_planet),
-          universe.planet_radius(dest_planet) * 1.8,
-          0,
-          Math.PI * 2,
-          true
+          universe.planet_radius(dest_planet) * 1.8
         );
-        ctx.fill();
-        ctx.fillStyle = "rgb(0,0,0)";
         // Draw packet
         if (universe.packet_bound()) {
           const planet = universe.packet_planet();
-          ctx.fillStyle = "rgb(255,0,0)";
-          ctx.strokeStyle = "rgb(255,0,0)";
-          ctx.beginPath();
-          ctx.arc(
+          fill_color(0);
+          draw_circle(
             universe.planet_x(planet),
             universe.planet_y(planet),
-            universe.planet_radius(planet) * 1.5,
-            0,
-            Math.PI * 2,
-            true
+            universe.planet_radius(planet) * 1.5
           );
-          ctx.fill();
+          stroke_color(0);
           ctx.beginPath();
           ctx.moveTo(universe.planet_x(planet), universe.planet_y(planet));
           ctx.lineTo(universe.packet_end_x(), universe.packet_end_y());
           ctx.stroke();
-          ctx.fillStyle = "rgb(0,0,0)";
-          ctx.strokeStyle = "rgb(0,0,0)";
         } else {
-          ctx.fillStyle = "rgb(255,0,0)";
-          ctx.beginPath();
-          ctx.arc(
+          fill_color(0);
+          draw_circle(
             universe.packet_x(),
             universe.packet_y(),
-            universe.packet_radius(),
-            0,
-            Math.PI * 2,
-            true
+            universe.packet_radius()
           );
-          ctx.fill();
-          ctx.fillStyle = "rgb(0,0,0)";
         }
+        fill_color(3);
         // Draw Stars
         for (var i = 0; i < universe.num_stars(); i++) {
-          ctx.beginPath();
-          ctx.arc(
+          draw_circle(
             universe.star_x(i),
             universe.star_y(i),
-            universe.star_radius(i),
-            0,
-            Math.PI * 2,
-            true
+            universe.star_radius(i)
           );
-          ctx.fill();
         }
         // Draw Planets
         for (var i = 0; i < universe.num_planets(); i++) {
-          ctx.beginPath();
-          ctx.arc(
+          draw_circle(
             universe.planet_x(i),
             universe.planet_y(i),
-            universe.planet_radius(i),
-            0,
-            Math.PI * 2,
-            true
+            universe.planet_radius(i)
           );
-          ctx.fill();
         }
       }
 
       async function run() {
         await init();
-        const canvas = document.getElementById("game-canvas");
         canvas.addEventListener("click", function () {
           universe.free_packet();
         });
